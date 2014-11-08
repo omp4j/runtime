@@ -4,8 +4,8 @@ import java.util.concurrent.*;
 
 public class DynamicExecutor implements IOMPExecutor {
 
-	private long numThreads;
-	private ExecutorService executor;
+	protected long numThreads;
+	protected ExecutorService executor;
 
 	public DynamicExecutor(int numThreads) {
 		assert(numThreads > 0);
