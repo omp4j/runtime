@@ -6,4 +6,5 @@ public interface IOMPExecutor extends Executor {
 	public void waitForExecution();
 	public long getThreadNum();
 	public long getNumThreads();
+	public void hitBarrier(String barrierName);
 }
