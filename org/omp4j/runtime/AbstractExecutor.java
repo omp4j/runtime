@@ -4,27 +4,29 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.util.HashMap;
 
-public class DynamicExecutor implements IOMPExecutor {
+/**
+ * Class implementing common methods for executors.
+ */
+public abstract class AbstractExecutor implements IOMPExecutor {
 
+	/** Number of threads to be used */
 	protected long numThreads;
-	protected ExecutorService executor;
+
+	/** Map of barriers */
 	protected HashMap<String, AtomicLong> barriers;
 
-	public DynamicExecutor(int numThreads) {
-		assert(numThreads > 0);
-		this.numThreads = numThreads;
-		executor = Executors.newFixedThreadPool(numThreads);
-		barriers = new HashMap<String, AtomicLong>();
-	}
-
-	@Override
-	public void waitForExecution() {
-		try {
-			executor.shutdown();
-			executor.awaitTermination(9999999, TimeUnit.DAYS);
-		} catch (InterruptedException e) {
-			// TODO
+	/**
+	 * Construct new executor.
+	 * @param numThreads number of threads to be used.
+	 * @throws IllegalArgumentException if numThreads isn't positive integer.
+	*/
+	public AbstractExecutor(int numThreads) {
+		if (numThreads <= 0) {
+			throw new IllegalArgumentException("Number of threads must be positive integer.");
 		}
+
+		this.numThreads = numThreads;
+		this.barriers = new HashMap<String, AtomicLong>();
 	}
 
 	@Override
@@ -35,11 +37,6 @@ public class DynamicExecutor implements IOMPExecutor {
 	@Override
 	public long getNumThreads() {
 		return this.numThreads;
-	}
-
-	@Override
-	public void execute(Runnable task) {
-		executor.execute(task);
 	}
 
 	@Override
