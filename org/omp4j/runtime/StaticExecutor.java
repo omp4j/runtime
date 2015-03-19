@@ -32,14 +32,14 @@ public class StaticExecutor extends AbstractExecutor implements IOMPExecutor {
 		super(numThreads);
 
 		// init task queues
-		this.queues = new ArrayList<>(numThreads);
+		this.queues = new ArrayList<Queue<Runnable>>(numThreads);
 		for (int i = 0; i < numThreads; i++) {
-			this.queues.add(new ConcurrentLinkedQueue<>());
+			this.queues.add(new ConcurrentLinkedQueue<Runnable>());
 		}
 
 		// init locks and condvars
-		this.locks = new ArrayList<>(numThreads);
-		this.condvars = new ArrayList<>(numThreads);
+		this.locks = new ArrayList<Lock>(numThreads);
+		this.condvars = new ArrayList<Condition>(numThreads);
 		for (int i = 0; i < numThreads; i++) {
 			Lock l = new ReentrantLock();
 			this.locks.add(l);
@@ -47,7 +47,7 @@ public class StaticExecutor extends AbstractExecutor implements IOMPExecutor {
 		}
 
 		// init threads
-		this.threads = new ArrayList<>(numThreads);
+		this.threads = new ArrayList<Thread>(numThreads);
 		for (int i = 0; i < numThreads; i++) {
 			this.threads.add(new StaticExecutorThread(i));
 		}
