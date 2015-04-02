@@ -14,36 +14,24 @@ public class StaticExecutor extends AbstractExecutor implements IOMPExecutor {
 	final private ArrayList<Thread> threads;
 
 	/** List of task queues for each thread. */
-	final private ArrayList<Queue<Runnable>> queues;
+	final private ArrayList<BlockingQueue<Runnable>> queues;
 
 	/** List of locks for each thread. */
-	final private ArrayList<Lock> locks;
-
-	/** List of conditional variables for each thread. */
-	final private ArrayList<Condition> condvars;
+	final private Lock lock = new ReentrantLock();
+	final private Condition condvar = lock.newCondition();
 	
-	/** Id of next task queue. */
-	private AtomicInteger nextQueueIndex = new AtomicInteger(0);
-
 	/** True if waitForExecution was called, False otherwise. */
 	private AtomicBoolean isTerminating = new AtomicBoolean(false);
+	private AtomicInteger remaining = new AtomicInteger(0);
+	private AtomicInteger nextQueueIndex = new AtomicInteger(0);
 
 	public StaticExecutor(int numThreads) {
 		super(numThreads);
 
 		// init task queues
-		this.queues = new ArrayList<Queue<Runnable>>(numThreads);
+		this.queues = new ArrayList<BlockingQueue<Runnable>>(numThreads);
 		for (int i = 0; i < numThreads; i++) {
-			this.queues.add(new ConcurrentLinkedQueue<Runnable>());
-		}
-
-		// init locks and condvars
-		this.locks = new ArrayList<Lock>(numThreads);
-		this.condvars = new ArrayList<Condition>(numThreads);
-		for (int i = 0; i < numThreads; i++) {
-			Lock l = new ReentrantLock();
-			this.locks.add(l);
-			this.condvars.add(l.newCondition());
+			this.queues.add(new LinkedBlockingQueue<Runnable>());
 		}
 
 		// init threads
@@ -60,41 +48,31 @@ public class StaticExecutor extends AbstractExecutor implements IOMPExecutor {
 
 	@Override
 	synchronized public void waitForExecution() {
-		isTerminating.set(true);
 		try {
-			for (int i = 0; i < numThreads; i++) {
-				final Lock lock = locks.get(i);
-				final Condition condvar = condvars.get(i);
-
-				lock.lock();
-				condvar.signal();
-				lock.unlock();
+			lock.lock();
+			while (remaining.get() > 0) {
+				condvar.await();
 			}
+
+			lock.unlock();
+
 			for (int i = 0; i < numThreads; i++) {
+				threads.get(i).interrupt();
 				threads.get(i).join();
 			}
 		} catch (InterruptedException e) {
-			// TODO
+			e.printStackTrace();
 		}
 	}
 
 	@Override
 	public void execute(Runnable task) {
-		if (isTerminating.get()) {
-			throw new IllegalStateException("Terminating poll.");
-		}
+		remaining.incrementAndGet();
 
 		int addIdx = nextQueueIndex.getAndIncrement();
-		int threadIdx = addIdx % 4;
+		int threadIdx = addIdx % numThreads;
 
 		queues.get(threadIdx).add(task);
-
-		final Lock lock = locks.get(threadIdx);
-		final Condition condvar = condvars.get(threadIdx);
-
-		lock.lock();
-		condvar.signal();
-		lock.unlock();
 	}
 
 
@@ -103,7 +81,6 @@ public class StaticExecutor extends AbstractExecutor implements IOMPExecutor {
 
 		/** ID of this particular thread. */
 		private final int threadID;
-
 
 		/**
 		 * Worker constructor.
@@ -120,49 +97,27 @@ public class StaticExecutor extends AbstractExecutor implements IOMPExecutor {
 			this.threadID = threadID;
 		}
 
-		/**
-		 * Walk through the queue of threads given and execute them.
-		 * @param q the queue to be executed
-		*/
-		private void runAll(Queue<Runnable> q) {
-			while (!q.isEmpty()) {
-				Runnable task = q.poll();
-				task.run();
-			}
-		}
-
 		@Override
 		public void run() {
-			Queue<Runnable> threadQueue = queues.get(threadID);
-			boolean lastRun = false;
-			final Lock lock = locks.get(threadID);
-			final Condition condvar = condvars.get(threadID);
 
-			while (true) {
+			BlockingQueue<Runnable> queue = queues.get(threadID);
 
-				// first run
-				if (isTerminating.get()) {
-					runAll(threadQueue);
-					return;
-				}
+			try {
+				while (true) {
+					Runnable r = queue.take();
+					r.run();
 
-				// spurious wakeups and termination
-				lock.lock();
-				try {
-					while (threadQueue.isEmpty()) {
-						condvar.await();
-						if (isTerminating.get()) {
-							runAll(threadQueue);
-							return;
+					if (remaining.decrementAndGet() == 0) {
+						try {
+							lock.lock();
+							condvar.signal();
+						} finally {
+							lock.unlock();
 						}
 					}
-				} catch (InterruptedException e) {
-					return;
-				} finally {
-					lock.unlock();
 				}
-
-				runAll(threadQueue);
+			} catch (InterruptedException e) {
+				return;
 			}
 		}
 	}

@@ -1,7 +1,6 @@
 package org.omp4j.runtime;
 
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
 import java.util.HashMap;
 
 /**
@@ -10,10 +9,10 @@ import java.util.HashMap;
 public abstract class AbstractExecutor implements IOMPExecutor {
 
 	/** Number of threads to be used */
-	protected long numThreads;
+	protected final int numThreads;
 
 	/** Map of barriers */
-	protected HashMap<String, AtomicLong> barriers;
+	protected final ConcurrentHashMap<String, CyclicBarrier> barriers;
 
 	/**
 	 * Construct new executor.
@@ -26,38 +25,45 @@ public abstract class AbstractExecutor implements IOMPExecutor {
 		}
 
 		this.numThreads = numThreads;
-		this.barriers = new HashMap<String, AtomicLong>();
+		this.barriers = new ConcurrentHashMap<String, CyclicBarrier>();
 	}
 
 	@Override
-	public long getThreadNum() {
-		return Thread.currentThread().getId() % numThreads + 1;
+	public int getThreadNum() {
+		return (int) Thread.currentThread().getId() % numThreads + 1;
 	}
 
 	@Override
-	public long getNumThreads() {
+	public int getNumThreads() {
 		return this.numThreads;
 	}
 
 	@Override
-	public synchronized void hitBarrier(String barrierName) {
-		// TODO: really sycnhronized? atomic?
-		AtomicLong counter = null;
-		if (barriers.containsKey(barrierName)) {
-			counter = barriers.get(barrierName);
-		} else {
-			counter = new AtomicLong(numThreads);
-			barriers.put(barrierName, counter);
-		}
+	public void hitBarrier(String barrierName) {
+		
+		CyclicBarrier barr = null;
 
-		long remaining = counter.decrementAndGet();
+		// if barrier already exists, fetch it
+		if (barriers.containsKey(barrierName)) {
+			barr = barriers.get(barrierName);
+		} else {
+			// else block
+			synchronized(barriers) {
+				// check whether some other thread have created it while this thread was waiting before synchronized block
+				if (barriers.containsKey(barrierName)) {
+					barr = barriers.get(barrierName);
+				// if not, create it by itself
+				} else {
+					barr = new CyclicBarrier(numThreads);
+					barriers.put(barrierName, barr);
+				}
+			}
+		}
 
 		try {
-			if (remaining == 0) notifyAll();
-			else wait();
-		} catch (Exception e) {
-			// TODO:
-		}
+			barr.await();
+		} catch (InterruptedException e) {
+		} catch (BrokenBarrierException e) {}
 	}
 
 }

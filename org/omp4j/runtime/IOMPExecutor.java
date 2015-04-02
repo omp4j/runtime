@@ -11,10 +11,10 @@ public interface IOMPExecutor extends Executor {
 	public void waitForExecution();
 
 	/** Get unique id of the thread from which the method is called. The range is [1, threadNum]*/
-	public long getThreadNum();
+	public int getThreadNum();
 
 	/** Return total number of thread used. This number is usually the same as the one given to the constructor.*/
-	public long getNumThreads();
+	public int getNumThreads();
 
 	/**
 	 * Simulate barrier hit. Delay this thread until all threads have hit the barrier.
