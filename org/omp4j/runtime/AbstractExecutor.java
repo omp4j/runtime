@@ -30,7 +30,7 @@ public abstract class AbstractExecutor implements IOMPExecutor {
 
 	@Override
 	public int getThreadNum() {
-		return (int) Thread.currentThread().getId() % numThreads + 1;
+		return (int) Thread.currentThread().getId() % numThreads;
 	}
 
 	@Override
