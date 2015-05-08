@@ -23,7 +23,8 @@ public class DynamicExecutor extends AbstractExecutor implements IOMPExecutor {
 			executor.shutdown();
 			executor.awaitTermination(9999999, TimeUnit.DAYS);
 		} catch (InterruptedException e) {
-			// TODO
+			System.err.println("An InterruptedException occurred while waiting fot DynamicExecutor termination. This is unexpected behavior probably caused by thread manipulation. Please do not access threads created by the executors.");
+			System.exit(1);
 		}
 	}
 

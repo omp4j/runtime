@@ -62,8 +62,12 @@ public abstract class AbstractExecutor implements IOMPExecutor {
 
 		try {
 			barr.await();
+		} catch (BrokenBarrierException e) {
+			System.err.println("An BrokenBarrierException occurred while processing barrier '" + barrierName +"'. This is unexpected behavior probably caused by thread manipulation. Please do not access threads created by the executors.");
+			System.exit(1);
 		} catch (InterruptedException e) {
-		} catch (BrokenBarrierException e) {}
+			System.err.println("An InterruptedException occurred while processing barrier '" + barrierName +"'. This is unexpected behavior probably caused by thread manipulation. Please do not access threads created by the executors.");
+			System.exit(1);
+		}
 	}
-
 }

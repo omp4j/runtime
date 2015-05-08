@@ -55,7 +55,8 @@ public class StaticExecutor extends AbstractExecutor implements IOMPExecutor {
 				threads.get(i).join();
 			}
 		} catch (InterruptedException e) {
-			// TODO:
+			System.err.println("An InterruptedException occurred while waiting fot StaticExecutor termination. This is unexpected behavior probably caused by thread manipulation. Please do not access threads created by the executors.");
+			System.exit(1);
 		}
 	}
 
