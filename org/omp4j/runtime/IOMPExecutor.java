@@ -10,10 +10,10 @@ public interface IOMPExecutor extends Executor {
 	/** Block current thread until all tasks are finished. */
 	public void waitForExecution();
 
-	/** Get unique id of the thread from which the method is called. The range is [1, threadNum]*/
+	/** Get unique id of the thread from which the method is called. The range is [0, threadNum) */
 	public int getThreadNum();
 
-	/** Return total number of thread used. This number is usually the same as the one given to the constructor.*/
+	/** Return total number of thread used. This number is usually the same as the one given to the constructor. */
 	public int getNumThreads();
 
 	/**
